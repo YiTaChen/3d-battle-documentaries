@@ -242,18 +242,21 @@
 
 <!-- ==================== STATUS BARS ==================== -->
 <div id="status-panel">
-  <h3>Battle Status</h3>
-  <div class="bar-row"><label><span>Cao Cao Fleet Stability</span><span id="v-stability"></span></label>
-    <div class="bar-track"><div class="bar-fill" id="b-stability" style="background:var(--cao);width:85%"></div></div></div>
-  <div class="bar-row"><label><span>Allied Morale</span><span id="v-morale"></span></label>
-    <div class="bar-track"><div class="bar-fill" id="b-morale" style="background:var(--sun);width:65%"></div></div></div>
+  <h3>Army Strength &mdash; Estimated</h3>
+  <div class="bar-row"><label><span>♔ Cao Cao's Host</span><span id="v-cao"></span></label>
+    <div class="bar-track"><div class="bar-fill" id="b-cao" style="background:var(--cao);width:100%"></div></div></div>
+  <div class="bar-row"><label><span>★ Sun Quan / Zhou Yu</span><span id="v-wu"></span></label>
+    <div class="bar-track"><div class="bar-fill" id="b-wu" style="background:var(--sun);width:14%"></div></div></div>
+  <div class="bar-row"><label><span>★ Liu Bei</span><span id="v-liu"></span></label>
+    <div class="bar-track"><div class="bar-fill" id="b-liu" style="background:var(--liu);width:9%"></div></div></div>
   <div class="bar-row"><label><span>Eastern Wind</span><span id="v-wind"></span></label>
     <div class="bar-track"><div class="bar-fill" id="b-wind" style="background:var(--wind);width:5%"></div></div></div>
   <div class="bar-row"><label><span>Fire Spread</span><span id="v-fire"></span></label>
     <div class="bar-track"><div class="bar-fill" id="b-fire" style="background:var(--fire);width:0%"></div></div></div>
-  <div id="status-note">Figures approximate / estimated. Huang Gai&rsquo;s ruse and
-    &ldquo;borrowing the east wind&rdquo; follow <i>Romance of the Three Kingdoms</i>
-    (dramatized elements).</div>
+  <div id="status-note">Cao Cao claimed 800,000 men; modern estimates run far lower
+    (~220,000 incl. the surrendered Jing fleet) vs Zhou Yu&rsquo;s ~30,000 and Liu Bei&rsquo;s
+    ~20,000. All figures approximate / estimated. Huang Gai&rsquo;s ruse and &ldquo;borrowing
+    the east wind&rdquo; follow <i>Romance of the Three Kingdoms</i> (dramatized).</div>
 </div>
 
 <!-- ==================== TIMELINE / CONTROLS ==================== -->
@@ -1602,12 +1605,38 @@ function stopAllEffects(){
 /* =====================================================================
    SECTION 9 : TIMELINE / ACTS
    ===================================================================== */
-function setBars(stability, morale, wind, fire){
+/* army-strength readout: the huge blue host against a small allied force,
+   bars drawn to the same scale so the mismatch — and the post-fire collapse —
+   reads at a glance. Counts drain smoothly toward their targets. */
+const STRENGTH_MAX = 220000;
+const strength = { cao: 220000, wu: 30000, liu: 20000,
+  caoT: 220000, wuT: 30000, liuT: 20000, drawn: false };
+function fmtMen(n){ return '~' + (Math.round(n / 1000) * 1000).toLocaleString('en-US'); }
+updateHooks.push((dt) => {
+  let moving = false;
+  for(const k of ['cao', 'wu', 'liu']){
+    const t = strength[k + 'T'];
+    if(strength[k] !== t){
+      strength[k] = Math.abs(strength[k] - t) < 400
+        ? t : strength[k] + (t - strength[k]) * Math.min(1, dt * 0.9);
+      moving = true;
+    }
+  }
+  if(!moving && strength.drawn) return;
+  strength.drawn = true;
+  for(const k of ['cao', 'wu', 'liu']){
+    document.getElementById('b-' + k).style.width =
+      Math.max(2, strength[k] / STRENGTH_MAX * 100) + '%';
+    document.getElementById('v-' + k).textContent = fmtMen(strength[k]);
+  }
+});
+function setBars(cao, wu, liu, wind, fire){
+  strength.caoT = cao; strength.wuT = wu; strength.liuT = liu;
   const set = (id, v) => {
     document.getElementById('b-' + id).style.width = v + '%';
     document.getElementById('v-' + id).textContent = '~' + v + '%';
   };
-  set('stability', stability); set('morale', morale); set('wind', wind); set('fire', fire);
+  set('wind', wind); set('fire', fire);
 }
 
 const ACTS = [
@@ -1641,7 +1670,7 @@ const ACTS = [
     U.liubei.setStatus('Rallying after Changban');
     U.zhuge.setStatus('Travelling to Sun Quan\'s court');
     setFires(['caoCamp1', 'caoCamp2']);
-    setBars(85, 50, 5, 0);
+    setBars(220000, 30000, 20000, 5, 0);
   },
   triggers: [
     { at: 8, fn(){ document.getElementById('act-event').textContent =
@@ -1678,7 +1707,7 @@ const ACTS = [
     U.caocao.placeAt(-140, -320); U.caocao.setStatus('Demanding surrender by letter');
     U.caoInf.placeAt(-220, -360); U.caoInf.setStatus('Camped at Wulin');
     setFires(['caoCamp1', 'caoCamp2', 'allied1', 'allied2']);
-    setBars(85, 70, 5, 0);
+    setBars(220000, 30000, 20000, 5, 0);
   },
   triggers: [
     { at: 14, fn(){ document.getElementById('act-event').textContent =
@@ -1704,7 +1733,7 @@ const ACTS = [
     U.huanggai.setStatus('Sees the weakness — proposes fire');
     U.zhuge.setStatus('Advising the alliance');
     setFires(['caoCamp1', 'caoCamp2']);
-    setBars(90, 70, 5, 0);
+    setBars(220000, 30000, 20000, 5, 0);
   },
   triggers: [
     { at: 13, fn(){ document.getElementById('act-event').textContent =
@@ -1736,7 +1765,7 @@ const ACTS = [
     U.zhouyu.setStatus('Fleet ready behind the ruse');
     U.zhuge.setStatus('Watching the weather (Romance: praying for wind)');
     setFires(['caoCamp1', 'caoCamp2']);
-    setBars(90, 75, 10, 0);
+    setBars(220000, 30000, 20000, 10, 0);
   },
   triggers: [
     { at: 8, fn(){ document.getElementById('act-event').textContent =
@@ -1774,7 +1803,7 @@ const ACTS = [
     U.zhouyu.setStatus('Fleet at battle stations');
     U.caocao.setStatus('Asleep in the Wulin camp');
     setFires(['caoCamp1', 'caoCamp2']);
-    setBars(88, 80, 5, 0);
+    setBars(220000, 30000, 20000, 5, 0);
   },
   triggers: [
     { at: 2, fn(){ document.getElementById('act-event').textContent =
@@ -1785,7 +1814,7 @@ const ACTS = [
           'Past midnight the northwest wind falters\u2026 and DIES. The river goes utterly still'; } },
     { at: 8, fn(){
         setWind('east', 1);
-        setBars(88, 88, 95, 0);
+        setBars(220000, 30000, 20000, 95, 0);
         document.getElementById('act-event').textContent =
           'THE WIND TURNS — a hard east wind howls upriver (Romance: Zhuge Liang\'s borrowed wind)'; } },
     { at: 12, fn(){
@@ -1801,7 +1830,7 @@ const ACTS = [
         volleys.fireArrows.fireBetween(330, 90, -80, -100);
         volleys.caoArrows.fireBetween(-150, -130, 200, 60);
         assaultArrows.alliedAdv.visible = true;
-        setBars(60, 90, 95, 10);
+        setBars(205000, 30000, 20000, 95, 10);
         document.getElementById('act-event').textContent =
           'IMPACT — flame leaps from hull to chained hull'; } },
     { at: 24, fn(){
@@ -1857,7 +1886,7 @@ const ACTS = [
     U.huanggai.moveTo(390, 140, 9);
     U.liubei.moveTo(120, 330, 14);  U.liubei.setStatus('Marching upstream to harry the retreat');
     U.zhuge.moveTo(160, 360, 14);   U.zhuge.setStatus('Posting ambushes on the roads (Romance)');
-    setBars(25, 95, 95, 70);
+    setBars(160000, 30000, 20000, 95, 70);
   },
   triggers: [
     { at: 7, fn(){
@@ -1868,6 +1897,7 @@ const ACTS = [
         assaultArrows.retreat.visible = true;
         U.caocao.moveTo(-420, -500, 12); U.caocao.setStatus('Retreating up the Huarong road');
         U.caoInf.moveTo(-380, -470, 13); U.caoInf.setStatus('Fleeing through the marshes');
+        setBars(125000, 29000, 20000, 95, 85);
         document.getElementById('act-event').textContent =
           'Cao Cao abandons the anchorage and retreats overland through Huarong'; } },
     { at: 15, fn(){
@@ -1882,7 +1912,7 @@ const ACTS = [
           'Allied squadrons drive in among the wrecks, boarding and burning what remains'; } },
     { at: 23, fn(){
         volleys.caoArrows.stop();
-        setBars(10, 95, 90, 90);
+        setBars(100000, 29000, 19000, 90, 90);
         document.getElementById('act-event').textContent =
           'The northern army streams away from the river, harried by allied pursuit'; } }
   ]
@@ -1921,7 +1951,7 @@ const ACTS = [
     U.huanggai.placeAt(390, 140); U.huanggai.setStatus('The fire attack succeeded');
     U.liubei.placeAt(120, 330);  U.liubei.setStatus('Victorious — turns west to Jing & Shu');
     U.zhuge.placeAt(160, 360);   U.zhuge.setStatus('The tripod of three kingdoms is set');
-    setBars(5, 95, 25, 100);
+    setBars(60000, 29000, 19000, 25, 100);
   },
   triggers: [
     { at: 6, fn(){
