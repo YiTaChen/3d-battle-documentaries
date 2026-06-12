@@ -543,23 +543,55 @@ const outerLine = buildSiegeLine(OUTER_R, 88, 4, true);
 const innerTrench = buildTrenchRing(INNER_R - 9, 5);
 const outerTrench = buildTrenchRing(OUTER_R + 9, 5);
 
+/* broadcast-graphics ring overlays so the double encirclement reads from the air */
+function buildRingOverlay(radius, colorHex, dashed){
+  const group = new THREE.Group();
+  const arcs = dashed ? 36 : 1;
+  const mat = new THREE.MeshBasicMaterial({ color: colorHex, transparent: true,
+    opacity: 0, depthWrite: false, side: THREE.DoubleSide });
+  for(let i = 0; i < arcs; i++){
+    const span = (Math.PI * 2) / arcs;
+    const geo = new THREE.RingGeometry(radius - 2.4, radius + 2.4, dashed ? 8 : 160, 1,
+      i * span, dashed ? span * 0.55 : Math.PI * 2);
+    geo.rotateX(-Math.PI / 2);
+    const p = geo.attributes.position;
+    for(let j = 0; j < p.count; j++) p.setY(j, groundY(p.getX(j), p.getZ(j)) + 1.6);
+    group.add(new THREE.Mesh(geo, mat));
+  }
+  scene.add(group);
+  return { group, mat };
+}
+const innerRing = buildRingOverlay(INNER_R, 0x4d8dff, false);
+const outerRing = buildRingOverlay(OUTER_R, 0x8fc2ff, true);
+
 function setLineTarget(line, t){ line.target = t; }
+const LINES = [
+  [innerLine, innerTrench, lblInner, innerRing],
+  [outerLine, outerTrench, lblOuter, outerRing],
+];
+function applyLineVisuals([line, trench, lbl, ring]){
+  const n = line.segments.length;
+  line.segments.forEach((seg, i) => {
+    const segP = Math.min(1, Math.max(0, line.progress * n - i)); // sequential build
+    seg.visible = segP > 0.02;
+    seg.scale.y = Math.max(0.02, segP);
+  });
+  trench.material.opacity = Math.min(0.85, line.progress * 1.2);
+  ring.mat.opacity = line.progress * 0.5;
+  lbl.visible = line.progress > 0.35;
+}
 updateHooks.push((dt) => {
-  for(const [line, trench, lbl] of [
-      [innerLine, innerTrench, lblInner], [outerLine, outerTrench, lblOuter]]){
+  for(const entry of LINES){
+    const line = entry[0];
     if(Math.abs(line.progress - line.target) < 0.001) continue;
     line.progress += Math.sign(line.target - line.progress) * dt * 0.12;
     line.progress = Math.min(1, Math.max(0, line.progress));
-    const n = line.segments.length;
-    line.segments.forEach((seg, i) => {
-      const segP = Math.min(1, Math.max(0, line.progress * n - i)); // sequential build
-      seg.visible = segP > 0.02;
-      seg.scale.y = Math.max(0.02, segP);
-    });
-    trench.material.opacity = Math.min(0.85, line.progress * 1.2);
-    lbl.visible = line.progress > 0.35;
+    applyLineVisuals(entry);
   }
 });
+function finishLinesInstantly(){
+  for(const entry of LINES){ entry[0].progress = entry[0].target; applyLineVisuals(entry); }
+}
 
 /* --- Roman camps: rectangular palisade + tents --- */
 function buildCamp(x, z, size, name){
@@ -1496,10 +1528,17 @@ updateHooks.push((dt) => {
   }
 });
 
-/* boot: start the show */
+/* boot: start the show (?act=N deep-links into a chapter) */
 setCamMode('cinematic');
 setAutoPlay(true);
-setAct(0);
+const actParam = parseInt(new URLSearchParams(location.search).get('act'), 10);
+if(actParam >= 1 && actParam <= ACTS.length){
+  setAct(actParam - 1);
+  finishLinesInstantly();       // deep links skip the construction animation
+  camera.position.copy(camCurvePos.getPoint(0));   // start on the act's camera path
+} else {
+  setAct(0);
+}
 
 /* =====================================================================
    SECTION 9 : MAIN LOOP
