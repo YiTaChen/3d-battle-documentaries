@@ -14,6 +14,30 @@ specials. No build step — each battle is one HTML file with CDN imports.
 Every battle also has a **⚔ Battles** button in its control deck to jump
 straight to any other battle (each battle restarts from Act 1).
 
+## ⏱ Development Log — AI-Agent-Assisted Build
+
+The whole project was built **in a single working session on 2026-06-12**, in a
+pair-programming workflow with an AI coding agent
+([Claude Code](https://claude.com/claude-code)): the author directed scope,
+historical accuracy, visual style and iterative feedback; the agent implemented
+each feature, **verified every change by driving the app in a headless browser**
+(act-by-act screenshots, timing measurements, regression checks) and deployed to
+GitHub Pages. Times below are wall-clock, derived from the git commit history.
+
+| Component | Scope delivered | AI-agent dev time |
+|---|---|---|
+| ⚔ Alesia (`alesia.html`, ~1,700 lines) | Terrain, double siege rings, 3 factions, 6-act cinematic timeline, effects, info cards | ~45 min initial build + ~35 min refinements (pause/speed rework, README) |
+| 🇺🇸 Yorktown (`yorktown.html`, ~2,050 lines) | Coastal map, naval blockade, progressive siege parallels, redoubt night assault, 7 acts | ~30 min initial build + ~15 min alliance-readability pass |
+| 🔥 Red Cliffs (`redcliffs.html`, ~2,180 lines) | Chained fleet, 5-state ship damage machine, chain-reaction fire, wind reversal, Huarong episode, army-strength UI | ~25 min initial build + ~1.5 h director-feedback iterations (6 revision rounds) |
+| 🏛 Main menu + battle switcher (`index.html`, ~270 lines) | Cinematic hub with era timeline, act deep-links; in-battle switch menu in all three battles | ~25 min across two iterations |
+| **Total** | **3 interactive battles + hub, ~6,200 lines of self-contained HTML/JS/CSS** | **≈ 4.5 hours, one session** |
+
+The iteration pattern: the author reviewed each deployed build as a viewer and
+gave story-level notes (e.g. *"the ambush must be set before the rout, not
+chase it"*, *"the whole chained fleet should blaze before charring"*); the agent
+turned each note into code, re-verified, and shipped — typically in a
+10–20 minute turnaround per round.
+
 ---
 
 # The Battle of Alesia — 52 BCE
